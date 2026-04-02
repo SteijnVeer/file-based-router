@@ -1,4 +1,4 @@
-# file-based-router
+# @steijnveer/file-based-router
 
 Express file-based routing with TypeScript support. Create routes using file system conventions.
 

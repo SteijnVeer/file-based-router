@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -24,7 +24,14 @@ Examples:
 }
 
 function dev() {
-  exec('tsx --watch src/main.ts');
+  const child = spawn('tsx', ['--watch', 'src/main.ts'], {
+    stdio: 'inherit',
+    shell: true
+  });
+
+  child.on('exit', (code) => {
+    process.exit(code ?? 0);
+  });
 }
 
 switch (command) {
