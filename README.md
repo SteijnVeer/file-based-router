@@ -69,6 +69,20 @@ await server.start();
 - `[...slug].ts` - Catch-all
 - `{segment}.ts` - Optional segment
 
+All can be prefixed with `[a-z].` for ensuring order of routes in the same dir:
+````
+routes/
+  blog/
+    a.latest.ts
+    b.[[title]].ts
+  departures/
+    [from]{-[to]}.ts
+  users/
+    [id].ts
+  a.index.ts <- will be applied first
+  z.index.ts <- will be applied last
+````
+
 Routes can export:
 - `GET`, `POST`, `PUT`, `PATCH`, `DELETE` - HTTP method handlers
 - `ALL` - Catch-all handler for any method
