@@ -1,7 +1,7 @@
 {
   "author": "Steijn Veer",
   "bin": {
-    "fbr": "./dist/bin/fbr.js"
+    "fbr": "dist/bin/fbr.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",
@@ -45,5 +45,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.0.1"
+  "version": "0.0.2"
 }

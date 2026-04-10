@@ -39,33 +39,12 @@ Then run:
 fbr dev
 ```
 
-### Using the API programmatically
-
-```typescript
-import { createServer, log } from 'file-based-router';
-
-log.level('info');
-
-const server = await createServer({
-  port: 3000,
-  hostname: 'localhost',
-  allowedOrigins: null,
-  routerOptions: {
-    rootDir: './routes',
-    basePath: '/api',
-    allowedExtensions: ['.ts']
-  }
-});
-
-await server.start();
-```
-
 ## File-Based Routing Conventions
 
 - `index.ts` - Does not append the api path
 - `route.ts` - Append api path with the filename
 - `[param].ts` - Parameter
-- `[[id]].ts` - Optional parameter
+- `[[param]].ts` - Optional parameter
 - `[...slug].ts` - Catch-all
 - `{segment}.ts` - Optional segment
 
@@ -84,18 +63,18 @@ routes/
 ````
 
 Routes can export:
-- `GET`, `POST`, `PUT`, `PATCH`, `DELETE` - HTTP method handlers
+- `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `HEAD` - HTTP method handlers
 - `ALL` - Catch-all handler for any method
 
 ## Example Route File
 
 ```typescript
-// routes/users/[id].ts
+// src/routes/users/[id].ts
 import type { Request, Response } from 'express';
 
 export function GET(req: Request, res: Response) {
   const { id } = req.params;
-  res.resolve({ user: id });
+  res.resolve({ user: { id } });
 }
 
 export function DELETE(req: Request, res: Response) {
