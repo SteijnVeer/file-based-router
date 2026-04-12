@@ -3,6 +3,7 @@ import cors from 'cors';
 import type { NextFunction, Request, Response } from 'express';
 import express, { Router } from 'express';
 import { existsSync, readdirSync, writeFileSync } from 'fs';
+import { createServer as createHttpServer } from 'http';
 import { extname, join, relative } from 'path';
 import { pathToFileURL } from 'url';
 import type { Config, Log, LogLevel, RoutesImportItem, RoutesImportMap, RoutesImportMapDefault, RoutesImportMapOptions, Server, ServerOptions } from './types';
@@ -26,7 +27,7 @@ log.level = ((level?: LogLevel) => {
 log.debug = (message) => log(message, 'debug');
 log.info = (message) => log(message, 'info');
 log.warn = (message) => log(message, 'warn');
-log.error = (message) => log(message, 'error');
+log.error = (message, error) => log(message + (error ? `\n${error instanceof Error ? error.stack : String(error)}` : ''), 'error');
 
 global.log = log;
 declare global {
@@ -220,9 +221,8 @@ function createServer({ port, hostname, allowedOrigins, routerOptions, forceNewI
       express.json(),
       responderMiddleware,
     ),
-    _httpServer: null,
     active() {
-      return !!server._httpServer;
+      return server._httpServer.listening;
     },
     _port: parsePort(port ?? 3000),
     port(port) {
@@ -247,27 +247,24 @@ function createServer({ port, hostname, allowedOrigins, routerOptions, forceNewI
       const router = createRouterFromImportMap(importMap);
       server._app.use(router);
       return new Promise<void>((resolve, reject) => {
-        server._httpServer = server._app.listen(server._port, server._hostname, (error) => {
-          if (error) {
-            log.error(`Error starting server: ${error instanceof Error ? error.stack : String(error)}`);
-            reject(error);
-          } else {
-            log.info(`Server is running on http://${server._hostname}:${server._port}`);
-            resolve();
-          }
+        server._httpServer.on('error', (error) => {
+          log.error('Error starting server:', error);
+          reject(error);
+        });
+        server._httpServer.listen(server._port, server._hostname, () => {
+          log.info(`Server is running on http://${server._hostname}:${server._port}`);
+          resolve();
         });
       });
     },
     async stop() {
       if (server.active())
         return new Promise<void>((resolve, reject) => {
-          server._httpServer?.close((error) => {
+          server._httpServer.close((error) => {
             if (error) {
-              server._httpServer = null;
-              log.error(`Error stopping server: ${error instanceof Error ? error.stack : String(error)}`);
+              log.error('Error stopping server:', error);
               reject(error);
             } else {
-              server._httpServer = null;
               log.info('Server stopped successfully.');
               resolve();
             }
@@ -277,6 +274,7 @@ function createServer({ port, hostname, allowedOrigins, routerOptions, forceNewI
         log.warn('Attempted to stop server, but it is not running.');
     }
   } as Server;
+  server._httpServer = createHttpServer(server._app);
   return server;
 }
 
@@ -286,7 +284,7 @@ async function loadConfig(): Promise<Config> {
     const configModule = await import(pathToFileURL('fbr.config').href);
     return configModule.default ?? {};
   } catch (error) {
-    log.error(`Error loading configuration: ${error instanceof Error ? error.stack : String(error)}`);
+    log.error('Error loading configuration:', error);
     return {};
   }
 }

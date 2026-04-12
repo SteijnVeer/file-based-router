@@ -11,7 +11,7 @@ interface Log {
   debug(message: string): void;
   info(message: string): void;
   warn(message: string): void;
-  error(message: string): void;
+  error(message: string, error?: any): void;
 }
 
 // import map
@@ -33,7 +33,7 @@ interface Server {
   allowedOrigins(): string[] | null;
   allowedOrigins(origins: string | string[] | null): void;
   _app: Express;
-  _httpServer: HttpServer | null;
+  _httpServer: HttpServer;
   active(): boolean;
   _port: number;
   port(): number;
