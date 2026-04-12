@@ -295,10 +295,14 @@ async function loadConfig(): Promise<Config> {
 const ready = new Promise<Server>(async (resolve) => {
   const config = await loadConfig();
   log.level(config.logLevel!);
-  resolve(createServer({
+  const server = createServer({
     ...config.server,
     routerOptions: config.router,
-  }));
+  });
+  if (config.plugins)
+    for await (const plugin of config.plugins)
+      plugin(server);
+  resolve(server);
 });
 
 

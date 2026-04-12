@@ -14,7 +14,7 @@ Usage:
   fbr help          Show this help message
 
 Options:
-  --config <path>   Path to config file (default: fbr.config.{ts,js,json})
+  --config <path>   Path to config file (default: fbr.config.{ts,js,json,...})
 
 Examples:
   fbr dev

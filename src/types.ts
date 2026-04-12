@@ -58,6 +58,7 @@ type Config = Partial<{
   logLevel: LogLevel;
   server: Omit<ServerOptions, 'routerOptions'>;
   router: RoutesImportMapOptions;
+  plugins: ((server: Server) => any)[];
 }>;
 
 
