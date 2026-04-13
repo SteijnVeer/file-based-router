@@ -15,6 +15,7 @@ Usage:
 
 Options:
   --config <path>   Path to config file (default: fbr.config.{ts,js,json,...})
+    ! can also be set via FBR_CONFIG_PATH environment variable
 
 Examples:
   fbr dev

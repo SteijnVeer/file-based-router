@@ -62,5 +62,31 @@ type Config = Partial<{
 }>;
 
 
+// golbal declarations
+declare global {
+  var log: Log;
+  namespace Express {
+    interface Response {
+      resolve: (details?: {
+        status?: number;
+        message?: string;
+        data?: object | null;
+      }) => void;
+      reject: {
+        (details?: {
+          status?: number;
+          message?: string;
+          error?: Error | string;
+        }): void;
+        forbidden(): void;
+        notFound(): void;
+        badRequest(): void;
+        internalError(): void;
+      };
+    }
+  }
+}
+
+
 export type { Config, Log, LogLevel, RoutesImportItem, RoutesImportMap, RoutesImportMapDefault, RoutesImportMapOptions, Server, ServerOptions };
 

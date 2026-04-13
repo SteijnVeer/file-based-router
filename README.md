@@ -93,6 +93,57 @@ export function PATCH(req: Request, res: Response) {
 }
 ```
 
+## Plugins
+
+Extend the server with plugins to add custom functionality like WebSocket support, authentication, or database connections.
+
+### Using Plugins
+
+Add plugins to your config:
+
+```typescript
+// fbr.config.ts
+import { myPlugin } from '@steijnveer/fbr-plugin-name';
+import '@steijnveer/fbr-plugin-name/types'; // Load type declarations
+
+export default {
+  plugins: [myPlugin],
+  server: {
+    port: 3000
+  }
+};
+```
+
+### Available Plugins
+
+- **WebSocket** - See example in `examples/plugin-websocket/`
+- More plugins coming soon!
+
+### Creating Your Own Plugin
+
+Plugins can extend the `Server` interface with full TypeScript autocomplete support:
+
+```typescript
+// my-plugin.ts
+import type { Server } from '@steijnveer/file-based-router';
+
+// Extend the Server interface
+declare module '@steijnveer/file-based-router' {
+  interface Server {
+    myFeature(): void;
+  }
+}
+
+// Implement the plugin
+export function myPlugin(server: Server) {
+  (server as any).myFeature = () => {
+    console.log('Custom feature!');
+  };
+}
+```
+
+For a complete guide on creating plugins, see [PLUGIN-DEVELOPMENT.md](PLUGIN-DEVELOPMENT.md).
+
 ## Development
 
 ```bash

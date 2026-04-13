@@ -28,11 +28,7 @@ log.debug = (message) => log(message, 'debug');
 log.info = (message) => log(message, 'info');
 log.warn = (message) => log(message, 'warn');
 log.error = (message, error) => log(message + (error ? `\n${error instanceof Error ? error.stack : String(error)}` : ''), 'error');
-
 global.log = log;
-declare global {
-  var log: Log;
-}
 
 // path
 function removeOrderingPrefix(name: string): string {
@@ -159,28 +155,6 @@ function responderMiddleware(req: Request, res: Response, next: NextFunction) {
   res.reject.internalError = () => res.reject({ status: 500, message: 'Internal Server Error' });
   next();
 }
-declare global {
-  namespace Express {
-    interface Response {
-      resolve: (details?: {
-        status?: number;
-        message?: string;
-        data?: object | null;
-      }) => void;
-      reject: {
-        (details?: {
-          status?: number;
-          message?: string;
-          error?: Error | string;
-        }): void;
-        forbidden(): void;
-        notFound(): void;
-        badRequest(): void;
-        internalError(): void;
-      };
-    }
-  }
-}
 
 // address
 function parsePort(port: number | `${number}`): number {
@@ -279,9 +253,16 @@ function createServer({ port, hostname, allowedOrigins, routerOptions, forceNewI
 }
 
 // config
+function getConfigHref(): string {
+  let configPath = process.env.FBR_CONFIG_PATH;
+  const configArgIndex = process.argv.findIndex(arg => arg === '--config' || arg === '-c');
+  if (configArgIndex !== -1 && configArgIndex < process.argv.length - 2)
+    return process.argv[configArgIndex + 1];
+  return pathToFileURL(configPath ?? 'fbr.config').href;
+}
 async function loadConfig(): Promise<Config> {
   try {
-    const configModule = await import(pathToFileURL('fbr.config').href);
+    const configModule = await import(getConfigHref());
     return configModule.default ?? {};
   } catch (error) {
     log.error('Error loading configuration:', error);
@@ -305,5 +286,6 @@ const ready = new Promise<Server>(async (resolve) => {
 
 
 export default ready;
+export type { Config, Log, LogLevel, Server } from './types';
 export { ready };
 

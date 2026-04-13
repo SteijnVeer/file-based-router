@@ -22,6 +22,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./defineConfig": {
+      "import": "./dist/defineConfig.js",
+      "types": "./dist/defineConfig.d.ts"
     }
   },
   "files": [
@@ -45,5 +49,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.0.5"
+  "version": "0.0.6"
 }
