@@ -6,6 +6,6 @@ function defineConfig(config: Config) {
 
 
 export default defineConfig;
+export type { Config, LogLevel, RoutesImportMapOptions, ServerOptions } from './types';
 export { defineConfig };
-export type { Config };
 

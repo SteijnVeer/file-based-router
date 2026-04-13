@@ -286,6 +286,6 @@ const ready = new Promise<Server>(async (resolve) => {
 
 
 export default ready;
-export type { Config, Log, LogLevel, Server } from './types';
+export type { Config, Log, LogLevel, RoutesImportMapOptions, Server, ServerOptions } from './types';
 export { ready };
 
