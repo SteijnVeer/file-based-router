@@ -214,11 +214,17 @@ function createServer({ port, hostname, allowedOrigins, routerOptions, forceNewI
       basePath: routerOptions?.basePath ?? '/',
       extensions: routerOptions?.extensions ?? ['.ts', '.js'],
     },
+    _routerApplied: false,
     async start() {
-      const importMapHref = getRoutesImportMapHref(server._routerOptions, forceNewImportMap);
-      const importMap = await importRoutesImportMap(importMapHref);
-      const router = createRouterFromImportMap(importMap);
-      server._app.use(router);
+      if (server.active())
+        return log.warn('Attempted to start server, but it is already running.');
+      if (!server._routerApplied) {
+        const importMapHref = getRoutesImportMapHref(server._routerOptions, forceNewImportMap);
+        const importMap = await importRoutesImportMap(importMapHref);
+        const router = createRouterFromImportMap(importMap);
+        server._app.use(router);
+        server._routerApplied = true;
+      }
       return new Promise<void>((resolve, reject) => {
         server._httpServer.on('error', (error) => {
           log.error('Error starting server:', error);

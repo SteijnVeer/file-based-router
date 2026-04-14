@@ -42,6 +42,7 @@ interface Server {
   hostname(): string;
   hostname(hostname: string): void;
   _routerOptions: RoutesImportMapOptions;
+  _routerApplied: boolean;
   start(): Promise<void>;
   stop(): Promise<void>;
 }

@@ -73,7 +73,7 @@ export function myPlugin(server: Server) {
     }
   },
   "peerDependencies": {
-    "@steijnveer/file-based-router": "^0.0.5"
+    "@steijnveer/file-based-router": "^0.0.9"
   }
 }
 ```

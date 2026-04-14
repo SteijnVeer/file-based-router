@@ -11,7 +11,7 @@ npm install @steijnveer/file-based-router
 
 ```bash
 # or create new project
-npm create @steijnveer/creat-file-based-router
+npm create @steijnveer/creat-file-based-router myNewFbrProject
 ```
 
 ## Usage
@@ -115,8 +115,8 @@ export default {
 
 ### Available Plugins
 
-- Currently no plugins available yet.
-- More plugins coming soon!
+- @steijnveer/fbr-plugin-io
+- More plugins coming soon
 
 ### Creating Your Own Plugin
 
