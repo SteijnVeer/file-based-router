@@ -26,11 +26,16 @@
     "./defineConfig": {
       "import": "./dist/defineConfig.js",
       "types": "./dist/defineConfig.d.ts"
+    },
+    "./utils": {
+      "import": "./dist/utils.js",
+      "types": "./dist/utils.d.ts"
     }
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "PLUGIN-DEVELOPMENT.md"
   ],
   "keywords": [
     "express",
@@ -49,5 +54,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.0.7"
+  "version": "0.0.8"
 }

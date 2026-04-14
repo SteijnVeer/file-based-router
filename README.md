@@ -104,7 +104,6 @@ Add plugins to your config:
 ```typescript
 // fbr.config.ts
 import { myPlugin } from '@steijnveer/fbr-plugin-name';
-import '@steijnveer/fbr-plugin-name/types'; // Load type declarations
 
 export default {
   plugins: [myPlugin],
@@ -116,7 +115,7 @@ export default {
 
 ### Available Plugins
 
-- **WebSocket** - See example in `examples/plugin-websocket/`
+- Currently no plugins available yet.
 - More plugins coming soon!
 
 ### Creating Your Own Plugin
@@ -136,8 +135,8 @@ declare module '@steijnveer/file-based-router' {
 
 // Implement the plugin
 export function myPlugin(server: Server) {
-  (server as any).myFeature = () => {
-    console.log('Custom feature!');
+  server.myFeature = () => {
+    log('Custom feature!');
   };
 }
 ```
@@ -152,6 +151,9 @@ fbr help
 
 # Run dev
 fbr dev
+
+# Build project
+tsc && fbr build
 ```
 
 ## License

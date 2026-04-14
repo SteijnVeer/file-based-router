@@ -46,8 +46,8 @@ import type { Server } from '@steijnveer/file-based-router';
 
 export function myPlugin(server: Server) {
   // Add runtime implementation
-  (server as any).myProperty = 'value';
-  (server as any).myMethod = function() {
+  server.myProperty = 'value';
+  server.myMethod = function() {
     log('Method called!');
   };
 }
@@ -162,10 +162,10 @@ Set up all properties and methods in the plugin function:
 ```typescript
 export function myPlugin(server: Server) {
   // Initialize properties with safe defaults
-  (server as any).myProperty = null;
+  server.myProperty = null;
   
   // Add methods that use 'this' correctly
-  (server as any).myMethod = function() {
+  server.myMethod = function() {
     // 'this' refers to the server instance
     log(this._port);
   };
@@ -242,7 +242,7 @@ Plugins have full access to the Server's internal properties:
 
 ```typescript
 export function myPlugin(server: Server) {
-  (server as any).getInfo = function() {
+  server.getInfo = function() {
     return {
       port: this._port,
       hostname: this._hostname,
@@ -290,7 +290,7 @@ export async function myPlugin(server: Server) {
   const config = await loadConfig();
   
   // Initialize with async operations
-  (server as any).initialize = async function() {
+  server.initialize = async function() {
     await setupDatabase();
   };
 }
@@ -313,7 +313,7 @@ declare module '@steijnveer/file-based-router' {
 }
 
 export function myLocalPlugin(server: Server) {
-  (server as any).customFeature = () => {
+  server.customFeature = () => {
     console.log('Local plugin feature');
   };
 }
@@ -327,10 +327,6 @@ export default {
 ```
 
 **Note**: For local plugins, the type augmentation is in the same file, so no separate import is needed.
-
-## Example Plugin
-
-See the complete WebSocket plugin example in `examples/plugin-websocket/` for a full reference implementation.
 
 ## Troubleshooting
 
@@ -358,7 +354,7 @@ import '@yourname/fbr-plugin-myplugin/types';
 
 **Solution**: Make sure:
 1. The plugin is added to the `plugins` array in config
-2. The plugin function actually assigns the properties: `(server as any).prop = value`
+2. The plugin function actually assigns the properties: `server.prop = value`
 3. You're accessing properties after the server is initialized
 
 ## Publishing Your Plugin
@@ -370,6 +366,5 @@ import '@yourname/fbr-plugin-myplugin/types';
 
 ## Questions?
 
-- See existing patterns in the Express.Response augmentation: [src/index.ts](src/index.ts#L146-L165)
-- Check the WebSocket plugin example: [examples/plugin-websocket/](examples/plugin-websocket/)
+- See existing patterns in the Express.Response augmentation: [src/index.ts](src/types.ts#L68-L87)
 - TypeScript module augmentation docs: https://www.typescriptlang.org/docs/handbook/declaration-merging.html

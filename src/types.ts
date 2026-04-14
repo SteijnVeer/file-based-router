@@ -54,13 +54,12 @@ interface ServerOptions {
 }
 
 // config
-type Config = Partial<{
-  logLevel: LogLevel;
-  server: Omit<ServerOptions, 'routerOptions'>;
-  router: RoutesImportMapOptions;
-  plugins: ((server: Server) => any)[];
-}>;
-
+interface Config {
+  logLevel?: LogLevel;
+  server?: Omit<ServerOptions, 'routerOptions'>;
+  router?: RoutesImportMapOptions;
+  plugins?: ((server: Server) => any)[];
+}
 
 // golbal declarations
 declare global {
@@ -88,5 +87,6 @@ declare global {
 }
 
 
+export type { NextFunction, Request, Response } from 'express';
 export type { Config, Log, LogLevel, RoutesImportItem, RoutesImportMap, RoutesImportMapDefault, RoutesImportMapOptions, Server, ServerOptions };
 

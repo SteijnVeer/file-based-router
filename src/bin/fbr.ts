@@ -11,15 +11,12 @@ file-based-router CLI
 
 Usage:
   fbr dev           Start development server with auto-reload
+  fbr build         Build the project for production (after tsc!)
   fbr help          Show this help message
-
-Options:
-  --config <path>   Path to config file (default: fbr.config.{ts,js,json,...})
-    ! can also be set via FBR_CONFIG_PATH environment variable
 
 Examples:
   fbr dev
-  fbr dev --config ./custom-config.ts
+  tsc && fbr build
 `);
   process.exit(0);
 }
@@ -35,9 +32,20 @@ function dev() {
   });
 }
 
+function build() {
+  // build logic
+  console.log(`
+fbr build is not implemented yet. For now just use tsc to compile the project.    
+`);
+  process.exit(-1);
+}
+
 switch (command) {
   case 'dev':
     dev();
+    break;
+  case 'build':
+    build();
     break;
   case 'help':
   case '--help':
