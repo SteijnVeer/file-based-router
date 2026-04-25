@@ -1,22 +1,21 @@
-import type { Server } from './types';
-import { createServer, loadConfig } from './utils';
+import { config } from './utils/config';
+import { log } from './utils/log';
+import { server } from './utils/server';
 
-// entry point
-const ready = new Promise<Server>(async (resolve) => {
-  const config = await loadConfig();
-  log.level(config.logLevel!);
-  const server = createServer({
-    ...config.server,
-    routerOptions: config.router,
-  });
-  if (config.plugins)
-    for await (const plugin of config.plugins)
-      plugin(server);
-  resolve(server);
-});
+(global as any).Fbr = { isDev: process.env.NODE_ENV === 'development', log, config, server };
+
+log.level(Fbr.isDev ? config.logLevel.dev : config.logLevel.prod);
+
+server.port(config.server.port);
+server.hostname(config.server.hostname);
+server.allowedOrigins(config.server.allowedOrigins);
+server.routesBasePath(config.router.routesBasePath);
+
+for await (const plugin of config.plugins)
+  await plugin();
 
 
-export default ready;
-export type { Config, Log, LogLevel, RoutesImportMapOptions, Server, ServerOptions } from './types';
-export { ready };
+export { server };
+export default server;
+export type * from './types';
 

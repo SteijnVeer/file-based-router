@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -11,18 +12,18 @@ file-based-router CLI
 
 Usage:
   fbr dev           Start development server with auto-reload
-  fbr build         Build the project for production (after tsc!)
+  fbr build         Build the project for production
   fbr help          Show this help message
 
 Examples:
   fbr dev
-  tsc && fbr build
+  fbr build
 `);
   process.exit(0);
 }
 
 function dev() {
-  const child = spawn('tsx', ['--watch', 'src/main.ts'], {
+  const child = spawn('tsx', ['--watch', '--env-file', '.env.dev', 'src/main.ts'], {
     stdio: 'inherit',
     shell: true
   });
@@ -33,11 +34,30 @@ function dev() {
 }
 
 function build() {
-  // build logic
-  console.log(`
-fbr build is not implemented yet. For now just use tsc to compile the project.    
-`);
-  process.exit(-1);
+  console.log('[FBR] Running tsc...');
+  const tsc = spawn('tsc', [], { stdio: 'inherit', shell: true });
+
+  tsc.on('exit', (code) => {
+    if (code !== 0) {
+      console.error('[FBR] tsc failed. Build aborted.');
+      process.exit(code ?? 1);
+    }
+
+    console.log('[FBR] Generating production routes map...');
+    const generateScript = fileURLToPath(new URL('./generate-routes.js', import.meta.url));
+    const gen = spawn('tsx', ['--env-file', '.env', generateScript], {
+      stdio: 'inherit',
+      shell: true,
+    });
+
+    gen.on('exit', (genCode) => {
+      if (genCode === 0)
+        console.log('[FBR] Build complete.');
+      else
+        console.error('[FBR] Route map generation failed.');
+      process.exit(genCode ?? 0);
+    });
+  });
 }
 
 switch (command) {

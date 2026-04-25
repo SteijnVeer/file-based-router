@@ -20,18 +20,30 @@ npm create @steijnveer/creat-file-based-router myNewFbrProject
 
 Create a `fbr.config.ts` (or `.js` or `.json`) in your project root:
 
-```typescript
-export default {
-  router: {
-    rootDir: '.\\src\\routes',
-    basePath: '/',
+```json
+// fbr.config.json
+{
+  "router": {
+    "routesDir": "routes",
+    "routesBasePath": "/api"
   },
-  server: {
-    port: 3000,
+  "server": {
+    "port": 3000
   },
-  logLevel: 'info'
-};
+  "logLevel": {
+    "dev": "debug",
+    "prod": "info"
+  }
+}
 ```
+
+create `main` entry file in src dir:
+
+````typescript
+import server from '@steijnveer/file-based-router';
+
+await server.start();
+````
 
 Then run:
 
@@ -70,7 +82,7 @@ Routes can export:
 
 ```typescript
 // src/routes/users/[id].ts
-import type { Request, Response } from 'express';
+import type { Request, Response } from '@steijnveer/file-based-router';
 
 export function GET(req: Request, res: Response) {
   const { id } = req.params;
@@ -103,15 +115,31 @@ Add plugins to your config:
 
 ```typescript
 // fbr.config.ts
-import { myPlugin } from '@steijnveer/fbr-plugin-name';
+import defineConfig from '@steijnveer/file-based-router/defineConfig';
+import myPlugin from '@steijnveer/fbr-plugin-name';
 
-export default {
-  plugins: [myPlugin],
+export default defineConfig({
+  plugins: [
+    myPlugin,
+    './localPlugins/myLocalPlugin'
+  ],
   server: {
     port: 3000
   }
-};
+});
 ```
+
+or
+
+````json
+// fbr.config.json
+{
+  "plugins": [
+    "@steijnveer/fbr-plugin-name",
+    "./localPlugins/myLocalPlugin"
+  ]
+}
+````
 
 ### Available Plugins
 
@@ -127,18 +155,20 @@ Plugins can extend the `Server` interface with full TypeScript autocomplete supp
 import type { Server } from '@steijnveer/file-based-router';
 
 // Extend the Server interface
-declare module '@steijnveer/file-based-router' {
-  interface Server {
-    myFeature(): void;
+declare global {
+  namespace Fbr {
+    interface Server {
+      myFeature(): void;
+    }
   }
 }
 
 // Implement the plugin
-export function myPlugin(server: Server) {
-  server.myFeature = () => {
+export default () => {
+  Fbr.server.myFeature = () => {
     log('Custom feature!');
   };
-}
+};
 ```
 
 For a complete guide on creating plugins, see [PLUGIN-DEVELOPMENT.md](PLUGIN-DEVELOPMENT.md).
@@ -153,7 +183,7 @@ fbr help
 fbr dev
 
 # Build project
-tsc && fbr build
+fbr build
 ```
 
 ## License

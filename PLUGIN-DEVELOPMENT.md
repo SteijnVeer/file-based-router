@@ -1,10 +1,10 @@
 # Plugin Development Guide
 
-This guide explains how to create plugins for `@steijnveer/file-based-router` that extend the Server interface with full TypeScript support.
+This guide explains how to create plugins for `@steijnveer/file-based-router` that extend the server and configuration with full TypeScript support.
 
 ## Overview
 
-Plugins use **TypeScript module augmentation** to extend the `Server` interface, combined with runtime object extension. This provides full autocomplete and type safety across npm package boundaries.
+Plugins are plain async functions (`() => void | Promise<void>`) that run after the server is set up. They access the server and config via the `Fbr` global namespace. TypeScript support is provided through **global namespace augmentation** of `Fbr.Server` and `Fbr.Config`.
 
 ## Quick Start
 
@@ -13,47 +13,57 @@ Plugins use **TypeScript module augmentation** to extend the `Server` interface,
 ```
 my-plugin/
   src/
-    index.ts      # Plugin implementation
-    types.d.ts    # Type declarations
+    index.ts      # Plugin implementation + type augmentation
   package.json
   tsconfig.json
 ```
 
 ### 2. Define Type Extensions
 
-Create `src/types.d.ts` with module augmentation:
+Augment the `Fbr` global namespace directly in your plugin's source (or a separate `.d.ts` file):
 
 ```typescript
-// src/types.d.ts
-declare module '@steijnveer/file-based-router' {
-  interface Server {
-    // Add your properties and methods here
-    myProperty: string;
-    myMethod(): void;
+// src/index.ts
+declare global {
+  namespace Fbr {
+    interface Server {
+      myProperty: string;
+      myMethod(): void;
+    }
+    // Optionally extend Config for plugin-specific config:
+    interface Config {
+      myPlugin?: {
+        enabled: boolean;
+      };
+    }
   }
 }
 ```
 
-**Important**: Use `declare module` to augment the Server interface. This merges your additions with the existing interface.
+**Important**: Use `declare global { namespace Fbr { ... } }` — not `declare module`. The `Fbr` namespace is a global, not a module export.
 
-### 3. Implement Plugin Function
+### 3. Implement the Plugin Function
 
-Create `src/index.ts` with the runtime implementation:
+Plugins receive no arguments. Access globals via `Fbr.server`, `Fbr.config`, and `log`:
 
 ```typescript
 // src/index.ts
-import type { Server } from '@steijnveer/file-based-router';
-
-export function myPlugin(server: Server) {
-  // Add runtime implementation
-  server.myProperty = 'value';
-  server.myMethod = function() {
-    log('Method called!');
+export default function myPlugin() {
+  Fbr.server.myProperty = 'value';
+  Fbr.server.myMethod = function() {
+    log.info('Method called!');
   };
 }
 ```
 
-**Note**: We use `(server as any)` to add properties at runtime since TypeScript doesn't know about them yet at compile time.
+Plugins can also be async:
+
+```typescript
+export default async function myPlugin() {
+  const data = await someAsyncSetup();
+  Fbr.server.myProperty = data;
+}
+```
 
 ### 4. Configure package.json
 
@@ -67,19 +77,16 @@ export function myPlugin(server: Server) {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
-    },
-    "./types": {
-      "types": "./dist/types.d.ts"
     }
   },
   "peerDependencies": {
-    "@steijnveer/file-based-router": "^0.0.9"
+    "@steijnveer/file-based-router": "^0.0.10"
   }
 }
 ```
 
 **Key points**:
-- Export both the plugin function (`.`) and types (`./types`)
+- A single export (`.`) is sufficient — types and implementation are co-located
 - Use `peerDependencies` for the router package
 - Set `"type": "module"` for ESM
 
@@ -110,29 +117,73 @@ npm install @yourname/fbr-plugin-myplugin
 
 ### Configuration
 
+Use `defineConfig` from `@steijnveer/file-based-router` for type-safe config. Plugins can be provided as imported functions **or as package name strings** (the router will import them automatically):
+
 ```typescript
 // fbr.config.ts
-import { myPlugin } from '@yourname/fbr-plugin-myplugin';
-import '@yourname/fbr-plugin-myplugin/types'; // Important: Load type declarations
+import { defineConfig } from '@steijnveer/file-based-router';
+import myPlugin from '@yourname/fbr-plugin-myplugin';
 
-export default {
-  plugins: [myPlugin],
+export default defineConfig({
+  plugins: [
+    myPlugin,
+    // or as a string — the router will import the default export:
+    '@yourname/fbr-plugin-myplugin',
+  ],
   server: {
-    port: 3000
-  }
-};
+    port: 3000,
+  },
+  // Plugin-specific config (if the plugin extends Fbr.Config):
+  myPlugin: {
+    enabled: true,
+  },
+});
 ```
 
-### Using Extended Server
+**Note**: When using string plugins, TypeScript type augmentation is not applied automatically. Import the plugin (or its types) explicitly if you need type safety.
+
+### Using the Extended Server
 
 ```typescript
-import ready from '@steijnveer/file-based-router';
+import server from '@steijnveer/file-based-router';
 
-const server = await ready;
-
-// Full TypeScript autocomplete for plugin additions!
+// Full TypeScript autocomplete for plugin additions:
 log(server.myProperty);
 server.myMethod();
+```
+
+## Extending Config
+
+Plugins can declare their own config section by augmenting `Fbr.Config`. The user sets it in `fbr.config.ts` alongside the built-in options, and the plugin reads it from `Fbr.config`:
+
+```typescript
+// Plugin type augmentation
+declare global {
+  namespace Fbr {
+    interface Config {
+      myPlugin?: {
+        maxConnections: number;
+      };
+    }
+  }
+}
+
+// Plugin implementation
+export default function myPlugin() {
+  const options = Fbr.config.myPlugin ?? { maxConnections: 100 };
+  log.debug(`myPlugin: maxConnections = ${options.maxConnections}`);
+}
+```
+
+```typescript
+// fbr.config.ts
+import defineConfig from '@steijnveer/file-based-router/defineConfig';
+import myPlugin from '@yourname/fbr-plugin-myplugin';
+
+export default defineConfig({
+  plugins: [myPlugin],
+  myPlugin: { maxConnections: 50 },
+});
 ```
 
 ## Best Practices
@@ -142,160 +193,79 @@ server.myMethod();
 Prefix plugin-specific properties to avoid collisions:
 
 ```typescript
-declare module '@steijnveer/file-based-router' {
-  interface Server {
-    // Good: prefixed
-    wsServer: WebSocketServer;
-    setupWebSocket(): void;
-    
-    // Avoid: too generic
-    // server: any;
-    // setup(): void;
+declare global {
+  namespace Fbr {
+    interface Server {
+      // Good: prefixed
+      wsServer: WebSocketServer;
+      wsBroadcast(message: string): void;
+
+      // Avoid: too generic
+      // server: any;
+      // broadcast(): void;
+    }
   }
 }
 ```
 
-### 2. Initialize in Plugin Function
+### 2. Handle Server Lifecycle
 
-Set up all properties and methods in the plugin function:
-
-```typescript
-export function myPlugin(server: Server) {
-  // Initialize properties with safe defaults
-  server.myProperty = null;
-  
-  // Add methods that use 'this' correctly
-  server.myMethod = function() {
-    // 'this' refers to the server instance
-    log(this._port);
-  };
-}
-```
-
-### 3. Handle Server Lifecycle
-
-Plugins can interact with server start/stop:
+Plugins can wrap `start` and `stop`:
 
 ```typescript
-export function myPlugin(server: Server) {
-  const originalStart = server.start;
-  const originalStop = server.stop;
-  
-  server.start = async function() {
+export default function myPlugin() {
+  const originalStart = Fbr.server.start;
+  const originalStop = Fbr.server.stop;
+
+  Fbr.server.start = async function() {
     await originalStart.call(this);
-    // Do plugin-specific setup after server starts
-    log.info('Plugin initialized');
+    log.info('Plugin initialized after server start');
   };
-  
-  server.stop = async function() {
-    // Do plugin-specific cleanup before server stops
-    log.info('Plugin cleanup');
+
+  Fbr.server.stop = async function() {
+    log.info('Plugin cleanup before server stop');
     await originalStop.call(this);
   };
 }
 ```
 
-### 4. Provide Type Safety
+### 3. Provide Type Safety
 
-Use proper TypeScript types in your declarations:
+Use proper TypeScript types in your declarations, not `any`:
 
 ```typescript
 import type { WebSocket } from 'ws';
 
-declare module '@steijnveer/file-based-router' {
-  interface Server {
-    // Good: specific types
-    broadcast(message: string, filter?: (ws: WebSocket) => boolean): void;
-    
-    // Avoid: any types
-    // doSomething(data: any): any;
+declare global {
+  namespace Fbr {
+    interface Server {
+      // Good: specific types
+      wsBroadcast(message: string, filter?: (ws: WebSocket) => boolean): void;
+    }
   }
 }
 ```
 
-### 5. Document Your Plugin
+### 4. Document Your Plugin
 
 Include JSDoc comments in type declarations:
 
 ```typescript
-declare module '@steijnveer/file-based-router' {
-  interface Server {
-    /**
-     * WebSocket server instance. Null until setupWebSocket() is called.
-     */
-    wsServer: WebSocketServer | null;
-    
-    /**
-     * Initialize the WebSocket server on the HTTP server.
-     * Must be called after server.start().
-     */
-    setupWebSocket(): void;
+declare global {
+  namespace Fbr {
+    interface Server {
+      /**
+       * WebSocket server instance. `null` until the plugin initializes.
+       */
+      wsServer: WebSocketServer | null;
+
+      /**
+       * Broadcast a message to all connected WebSocket clients.
+       */
+      wsBroadcast(message: string): void;
+    }
   }
 }
-```
-
-## Advanced Patterns
-
-### Access to Server Internals
-
-Plugins have full access to the Server's internal properties:
-
-```typescript
-export function myPlugin(server: Server) {
-  server.getInfo = function() {
-    return {
-      port: this._port,
-      hostname: this._hostname,
-      isActive: this.active(),
-      app: this._app, // Express app
-      httpServer: this._httpServer // HTTP server
-    };
-  };
-}
-```
-
-### Plugin Configuration
-
-Accept configuration in your plugin:
-
-```typescript
-// src/index.ts
-export interface MyPluginOptions {
-  enabled?: boolean;
-  maxConnections?: number;
-}
-
-export function myPlugin(options: MyPluginOptions = {}) {
-  return (server: Server) => {
-    const config = { enabled: true, maxConnections: 100, ...options };
-    // Use config...
-  };
-}
-
-// Usage in fbr.config.ts
-export default {
-  plugins: [
-    myPlugin({ maxConnections: 50 })
-  ]
-};
-```
-
-### Async Plugin Initialization
-
-Plugins can be async:
-
-```typescript
-export async function myPlugin(server: Server) {
-  // Load config from file
-  const config = await loadConfig();
-  
-  // Initialize with async operations
-  server.initialize = async function() {
-    await setupDatabase();
-  };
-}
-
-// In config plugins array, async plugins work fine
 ```
 
 ## Local Plugin Development
@@ -304,29 +274,52 @@ You can create plugins directly in your project without publishing:
 
 ```typescript
 // plugins/my-local-plugin.ts
-import type { Server } from '@steijnveer/file-based-router';
-
-declare module '@steijnveer/file-based-router' {
-  interface Server {
-    customFeature(): void;
+declare global {
+  namespace Fbr {
+    interface Server {
+      customFeature(): void;
+    }
   }
 }
 
-export function myLocalPlugin(server: Server) {
-  server.customFeature = () => {
-    console.log('Local plugin feature');
+export default function myLocalPlugin() {
+  Fbr.server.customFeature = () => {
+    log.info('Local plugin feature');
   };
 }
-
-// fbr.config.ts
-import { myLocalPlugin } from './plugins/my-local-plugin';
-
-export default {
-  plugins: [myLocalPlugin]
-};
 ```
 
-**Note**: For local plugins, the type augmentation is in the same file, so no separate import is needed.
+```typescript
+// fbr.config.ts
+import defineConfig from '@steijnveer/file-based-router/defineConfig';
+import myLocalPlugin from './plugins/my-local-plugin';
+
+export default defineConfig({
+  plugins: [myLocalPlugin],
+});
+```
+
+**Note**: For local plugins the type augmentation is in the same file, so no separate import is needed.
+
+## Environment Variables in Config
+
+Config values can be set to `USE_ENV` to read from environment variables at runtime. The key is derived as `PARENT_CHILD` in `SCREAMING_SNAKE_CASE`:
+
+```typescript
+import { defineConfig, USE_ENV } from '@steijnveer/file-based-router/defineConfig';
+
+export default defineConfig({
+  server: {
+    port: USE_ENV,          // reads SERVER_PORT
+    hostname: USE_ENV,      // reads SERVER_HOSTNAME
+  },
+});
+```
+
+Parsed environment variable values:
+- `"null"` → `null`
+- `"a,b,c"` → `["a", "b", "c"]` (comma-separated arrays)
+- Everything else is kept as a string (including numbers)
 
 ## Troubleshooting
 
@@ -334,28 +327,28 @@ export default {
 
 **Problem**: Plugin properties don't show up in autocomplete.
 
-**Solution**: Make sure you import the types:
+**Solution**: Make sure the plugin (or a file that imports it) is included in your project's TypeScript compilation. If using string-based plugin loading, import the plugin once in your `fbr.config.ts`:
+
 ```typescript
-import '@yourname/fbr-plugin-myplugin/types';
+import '@yourname/fbr-plugin-myplugin'; // loads type augmentation
 ```
 
-### Module Augmentation Not Found
+### Namespace Augmentation Not Found
 
-**Problem**: TypeScript can't find the module to augment.
+**Problem**: TypeScript can't find `Fbr.Server` or `Fbr.Config` to augment.
 
 **Solution**: Ensure:
-1. You have `@steijnveer/file-based-router` in dependencies
-2. The `declare module` path matches exactly: `'@steijnveer/file-based-router'`
-3. Your tsconfig has `"moduleResolution": "Bundler"` or `"Node"`
+1. You have `@steijnveer/file-based-router` in `dependencies` or `peerDependencies`
+2. You use `declare global { namespace Fbr { ... } }` — not `declare module`
+3. Your tsconfig has `"moduleResolution": "Bundler"` or `"Node16"`
 
 ### Runtime Errors
 
 **Problem**: Properties are undefined at runtime.
 
 **Solution**: Make sure:
-1. The plugin is added to the `plugins` array in config
-2. The plugin function actually assigns the properties: `server.prop = value`
-3. You're accessing properties after the server is initialized
+1. The plugin is listed in the `plugins` array in `fbr.config.ts`
+2. The plugin function assigns all properties: `Fbr.server.prop = value`
 
 ## Publishing Your Plugin
 
@@ -366,5 +359,5 @@ import '@yourname/fbr-plugin-myplugin/types';
 
 ## Questions?
 
-- See existing patterns in the Express.Response augmentation: [src/index.ts](src/types.ts#L68-L87)
-- TypeScript module augmentation docs: https://www.typescriptlang.org/docs/handbook/declaration-merging.html
+- See the `Fbr` namespace declarations: [src/types.ts](src/types.ts)
+- TypeScript namespace augmentation docs: https://www.typescriptlang.org/docs/handbook/declaration-merging.html

@@ -14,57 +14,89 @@ interface Log {
   error(message: string, error?: any): void;
 }
 
-// import map
-interface RoutesImportItem {
-  apiPath: string;
-  filePath: string;
-}
-interface RoutesImportMapOptions {
-  rootDir: string;
-  basePath: `/${string}`;
-  extensions: `.${string}`[];
-}
-type RoutesImportMap = [string, Record<string, Function[] | null>][];
-type RoutesImportMapDefault = { default: RoutesImportMap };
+// plugin — no params; access server/config via globals
+type Plugin = () => void | Promise<void>;
 
-// server
-interface Server {
-  _allowedOrigins: string[] | null;
-  allowedOrigins(): string[] | null;
-  allowedOrigins(origins: string | string[] | null): void;
-  _app: Express;
-  _httpServer: HttpServer;
-  active(): boolean;
-  _port: number;
-  port(): number;
-  port(port: number | `${number}`): void;
-  _hostname: string;
-  hostname(): string;
-  hostname(hostname: string): void;
-  _routerOptions: RoutesImportMapOptions;
-  _routerApplied: boolean;
-  start(): Promise<void>;
-  stop(): Promise<void>;
-}
-interface ServerOptions {
-  port?: number | `${number}`;
-  hostname?: string;
-  allowedOrigins?: string | string[] | null;
-  routerOptions?: Partial<RoutesImportMapOptions>;
-  forceNewImportMap?: boolean;
-}
+// special sentinel: use process.env[PARENT_CHILD] instead of a hardcoded value
+type UseEnv = 'USE_ENV';
 
-// config
-interface Config {
-  logLevel?: LogLevel;
-  server?: Omit<ServerOptions, 'routerOptions'>;
-  router?: RoutesImportMapOptions;
-  plugins?: ((server: Server) => any)[];
-}
+// user-facing config input type (deep partial of Fbr.Config)
+// plugins extend Fbr.Config via: declare global { namespace Fbr { interface Config { ... } } }
+type UserConfig = Omit<{
+  [K in keyof Fbr.Config]?: Fbr.Config[K] extends (infer _)[]
+    ? Fbr.Config[K] | UseEnv
+    : Fbr.Config[K] extends object
+    ? { [P in keyof Fbr.Config[K]]?: Fbr.Config[K][P] | UseEnv }
+    : Fbr.Config[K] | UseEnv
+}, 'plugins'> & {
+  plugins?: (Plugin | string)[] | UseEnv;
+};
 
-// golbal declarations
+// global declarations
 declare global {
-  var log: Log;
+  namespace Fbr {
+    /**
+     * The server instance. Extend this interface to add plugin-specific properties:
+     * @example
+     * declare global { namespace Fbr { interface Server { myProp: string } } }
+     */
+    interface Server {
+      _allowedOrigins: string[] | null;
+      allowedOrigins(): string[] | null;
+      allowedOrigins(origins: string | string[] | null): void;
+      _app: Express;
+      _httpServer: HttpServer;
+      active(): boolean;
+      _port: number;
+      port(): number;
+      port(port: number | `${number}`): void;
+      _hostname: string;
+      hostname(): string;
+      hostname(hostname: string): void;
+      _routesBasePath: string;
+      routesBasePath(): string;
+      routesBasePath(path: string): void;
+      _routerApplied: boolean;
+      routerApplied(): boolean;
+      start(): Promise<void>;
+      stop(): Promise<void>;
+    }
+    /**
+     * The resolved configuration. Extend this interface to add plugin-specific config:
+     * @example
+     * declare global { namespace Fbr { interface Config { myPlugin?: MyPluginConfig } } }
+     */
+    interface Config {
+      logLevel: {
+        dev: LogLevel;
+        prod: LogLevel;
+      };
+      paths: {
+        buildDir: string;
+        srcDir: string;
+      };
+      server: {
+        port: number | `${number}`;
+        hostname: string;
+        allowedOrigins: string[] | null;
+      };
+      router: {
+        routesDir: string;
+        routesBasePath: string;
+      };
+      plugins: Plugin[];
+    }
+    /** Whether the process is running in development mode. */
+    const isDev: boolean;
+    /** The singleton server instance. */
+    const server: Fbr.Server;
+    /** The resolved configuration. */
+    const config: Fbr.Config;
+    /** Global logger (also available as top-level `log`). */
+    const log: Log;
+  }
+  /** Global logger. Available in all route files and plugins. */
+  const log: Log;
   namespace Express {
     interface Response {
       resolve: (details?: {
@@ -89,5 +121,5 @@ declare global {
 
 
 export type { NextFunction, Request, Response } from 'express';
-export type { Config, Log, LogLevel, RoutesImportItem, RoutesImportMap, RoutesImportMapDefault, RoutesImportMapOptions, Server, ServerOptions };
+export type { Log, LogLevel, Plugin, UseEnv, UserConfig };
 

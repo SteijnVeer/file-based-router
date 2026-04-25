@@ -26,10 +26,6 @@
     "./defineConfig": {
       "import": "./dist/defineConfig.js",
       "types": "./dist/defineConfig.d.ts"
-    },
-    "./utils": {
-      "import": "./dist/utils.js",
-      "types": "./dist/utils.d.ts"
     }
   },
   "files": [
@@ -54,5 +50,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.0.9"
+  "version": "0.0.10"
 }
