@@ -60,6 +60,12 @@ const server = {
     else
       server._routesBasePath = path;
   },
+  _staticFilesDir: null,
+  staticFilesDir(path) {
+    if (path === undefined)
+      return server._staticFilesDir;
+    server._staticFilesDir = path;
+  },
   _routerApplied: false,
   routerApplied() {
     return server._routerApplied;
@@ -68,6 +74,10 @@ const server = {
     if (server.active())
       return log.warn('Attempted to start server, but it is already running.');
     if (!server.routerApplied()) {
+      if (server._staticFilesDir !== null) {
+        server._app.use(express.static(server._staticFilesDir));
+        log.info(`Serving static files from: ${server._staticFilesDir}`);
+      }
       const router = await getRouter();
       server._app.use(server.routesBasePath(), router);
       server._routerApplied = true;

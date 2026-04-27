@@ -25,8 +25,8 @@ type UseEnv = 'USE_ENV';
 type UserConfig = Omit<{
   [K in keyof Fbr.Config]?: Fbr.Config[K] extends (infer _)[]
     ? Fbr.Config[K] | UseEnv
-    : Fbr.Config[K] extends object
-    ? { [P in keyof Fbr.Config[K]]?: Fbr.Config[K][P] | UseEnv }
+    : NonNullable<Fbr.Config[K]> extends object
+    ? { [P in keyof NonNullable<Fbr.Config[K]>]?: NonNullable<Fbr.Config[K]>[P] | UseEnv }
     : Fbr.Config[K] | UseEnv
 }, 'plugins'> & {
   plugins?: (Plugin | string)[] | UseEnv;
@@ -56,6 +56,9 @@ declare global {
       _routesBasePath: string;
       routesBasePath(): string;
       routesBasePath(path: string): void;
+      _staticFilesDir: string | null;
+      staticFilesDir(): string | null;
+      staticFilesDir(path: string | null): void;
       _routerApplied: boolean;
       routerApplied(): boolean;
       start(): Promise<void>;
@@ -79,6 +82,7 @@ declare global {
         port: number | `${number}`;
         hostname: string;
         allowedOrigins: string[] | null;
+        staticFilesDir: string | null;
       };
       router: {
         routesDir: string;

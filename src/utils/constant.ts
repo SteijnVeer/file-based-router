@@ -26,6 +26,7 @@ const DEFAULT_CONFIG: Fbr.Config = {
     port: 3000,
     hostname: 'localhost',
     allowedOrigins: null,
+    staticFilesDir: null,
   },
   router: {
     routesDir: 'routes',

@@ -28,7 +28,8 @@ Create a `fbr.config.ts` (or `.js` or `.json`) in your project root:
     "routesBasePath": "/api"
   },
   "server": {
-    "port": 3000
+    "port": 3000,
+    "staticFilesDir": "public"
   },
   "logLevel": {
     "dev": "debug",
@@ -78,31 +79,54 @@ Routes can export:
 - `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `HEAD` - HTTP method handlers
 - `ALL` - Catch-all handler for any method
 
+## Static File Serving
+
+Set `server.staticFilesDir` in your config to serve static files (e.g. images, CSS, JS) from a directory. The path is relative to the working directory.
+
+```typescript
+// fbr.config.ts
+import { defineConfig } from '@steijnveer/file-based-router/defineConfig';
+
+export default defineConfig({
+  server: {
+    staticFilesDir: 'public', // serves files from ./public/
+  },
+});
+```
+
+Static files are served before the route handlers. If no `staticFilesDir` is set (the default), no static files are served.
+
 ## Example Route File
 
 ```typescript
 // src/routes/users/[id].ts
-import type { Request, Response } from '@steijnveer/file-based-router';
+import { defineRoute } from '@steijnveer/file-based-router/defineRoute';
 
-export function GET(req: Request, res: Response) {
+export const GET = defineRoute((req, res) => {
   const { id } = req.params;
   res.resolve({ user: { id } });
-}
+});
 
-export function DELETE(req: Request, res: Response) {
+export const DELETE = defineRoute((req, res) => {
   const { id } = req.params;
   res.resolve({
     message: `Succesfully deleted user.`,
     data: { deleted: id },
   });
-}
+});
 
-export function PATCH(req: Request, res: Response) {
+export const PATCH = defineRoute((req, res) => {
   const { id } = req.params;
   res.reject({
     error: new Error('Cannot update user.'),
   });
-}
+});
+```
+
+`defineRoute` provides typed `req`, `res`, and optionally `next` without needing to import and manually annotate the types. You can still use the bare types if preferred:
+
+```typescript
+import type { Request, Response, NextFunction } from '@steijnveer/file-based-router/defineRoute';
 ```
 
 ## Plugins

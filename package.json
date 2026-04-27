@@ -26,6 +26,10 @@
     "./defineConfig": {
       "import": "./dist/defineConfig.js",
       "types": "./dist/defineConfig.d.ts"
+    },
+    "./defineRoute": {
+      "import": "./dist/defineRoute.js",
+      "types": "./dist/defineRoute.d.ts"
     }
   },
   "files": [
@@ -50,5 +54,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.0.10"
+  "version": "0.0.11"
 }

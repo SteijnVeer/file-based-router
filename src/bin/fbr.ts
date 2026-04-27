@@ -23,9 +23,10 @@ Examples:
 }
 
 function dev() {
-  const child = spawn('tsx', ['--watch', '--env-file', '.env.dev', 'src/main.ts'], {
+  const child = spawn('tsx', ['--watch', '--env-file-if-exists=.env', '--env-file-if-exists=.env.dev', 'src/main.ts'], {
     stdio: 'inherit',
-    shell: true
+    shell: true,
+    env: { ...process.env, NODE_ENV: 'development' },
   });
 
   child.on('exit', (code) => {
@@ -35,7 +36,7 @@ function dev() {
 
 function build() {
   console.log('[FBR] Running tsc...');
-  const tsc = spawn('tsc', [], { stdio: 'inherit', shell: true });
+  const tsc = spawn('tsc', [], { stdio: 'inherit', shell: true, env: { ...process.env, NODE_ENV: 'production' } });
 
   tsc.on('exit', (code) => {
     if (code !== 0) {
@@ -45,9 +46,10 @@ function build() {
 
     console.log('[FBR] Generating production routes map...');
     const generateScript = fileURLToPath(new URL('./generate-routes.js', import.meta.url));
-    const gen = spawn('tsx', ['--env-file', '.env', generateScript], {
+    const gen = spawn('tsx', ['--env-file-if-exists=.env', generateScript], {
       stdio: 'inherit',
       shell: true,
+      env: { ...process.env, NODE_ENV: 'production' },
     });
 
     gen.on('exit', (genCode) => {

@@ -10,6 +10,7 @@ server.port(config.server.port);
 server.hostname(config.server.hostname);
 server.allowedOrigins(config.server.allowedOrigins);
 server.routesBasePath(config.router.routesBasePath);
+server.staticFilesDir(config.server.staticFilesDir);
 
 for await (const plugin of config.plugins)
   await plugin();
