@@ -1,6 +1,6 @@
-import { config } from './utils/config';
-import { log } from './utils/log';
-import { server } from './utils/server';
+import { config } from './core/config';
+import { log } from './core/log';
+import { server } from './core/server';
 
 (global as any).Fbr = { isDev: process.env.NODE_ENV === 'development', log, config, server };
 

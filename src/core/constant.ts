@@ -1,4 +1,4 @@
-import type { LogLevel } from '../types';
+import type { LogLevel, UseEnv } from '../types';
 
 const LOG_LEVELS: LogLevel[] = ['debug', 'info', 'warn', 'error', 'none', 'none'] as const;
 
@@ -35,6 +35,8 @@ const DEFAULT_CONFIG: Fbr.Config = {
   plugins: [],
 };
 
+const USE_ENV: UseEnv = 'USE_ENV';
 
-export { DEFAULT_CONFIG, LOG_LEVELS, METHODS };
+
+export { DEFAULT_CONFIG, LOG_LEVELS, METHODS, USE_ENV };
 

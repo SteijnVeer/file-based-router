@@ -16,20 +16,21 @@
     "@types/node": "^24.10.1",
     "@types/typescript": "^0.4.29",
     "tsx": "^4.21.0",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "zod": "^4.3.6"
   },
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
-    "./defineConfig": {
-      "import": "./dist/defineConfig.js",
-      "types": "./dist/defineConfig.d.ts"
+    "./*": {
+      "import": "./dist/utils/*.js",
+      "types": "./dist/utils/*.d.ts"
     },
-    "./defineRoute": {
-      "import": "./dist/defineRoute.js",
-      "types": "./dist/defineRoute.d.ts"
+    "./utils": {
+      "import": "./dist/utils/index.js",
+      "types": "./dist/utils/index.d.ts"
     }
   },
   "files": [
@@ -54,5 +55,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.0.11"
+  "version": "0.0.12"
 }

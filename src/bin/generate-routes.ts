@@ -1,7 +1,7 @@
 import { resolve } from 'path';
+import { importFile } from '../core/path.js';
+import { writeFbrFile } from '../core/router.js';
 import '../index.js';
-import { importFile } from '../utils/path.js';
-import { writeFbrFile } from '../utils/router.js';
 
 Fbr.server.start = async () => {};
 
