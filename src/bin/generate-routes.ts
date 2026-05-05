@@ -9,4 +9,4 @@ await importFile(Fbr.config.paths.buildDir, 'main.js');
 
 const rootDir = resolve(Fbr.config.paths.buildDir, Fbr.config.router.routesDir);
 const outPath = await writeFbrFile(rootDir);
-Fbr.log.info(`fbr.js written → ${outPath}`);
+log.info(`fbr file created → ${outPath}`);

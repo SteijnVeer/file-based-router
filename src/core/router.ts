@@ -1,141 +1,102 @@
 import { Router } from 'express';
-import { readdirSync, writeFileSync } from 'fs';
-import { dirname, relative, resolve as resolvePath } from 'path';
+import { writeFileSync } from 'fs';
+import { resolve as resolvePath } from 'path';
+import findFiles from '../utils/findFiles';
 import { METHODS } from './constant';
-import { importFile, joinApiPaths, joinFilePaths, makeForwardSlashes, parseApiPathPartFromPathSegment } from './path';
-
-interface RouteFile {
-  apiPath: string;
-  filePath: string;
-}
+import { createApiPathFromPathParts, createFilePathFromPathParts, importFile, joinFilePaths } from './path';
 
 function getFbrFilePath(rootDir: string): string {
-  return joinFilePaths(rootDir, '_fbr.js');
-}
-
-function scanDirectory(dirName: string, parentDirPath: string, parentApiPath: string): RouteFile[] {
-  const dirPath = joinFilePaths(parentDirPath, dirName);
-  const apiPath = joinApiPaths(parentApiPath, parseApiPathPartFromPathSegment(dirName, false));
-  return readdirSync(dirPath, { withFileTypes: true })
-    .flatMap(entry => entry.isDirectory()
-      ? scanDirectory(entry.name, dirPath, apiPath)
-      : [{
-          filePath: joinFilePaths(dirPath, entry.name),
-          apiPath: joinApiPaths(apiPath, parseApiPathPartFromPathSegment(entry.name, true)),
-        }]
-    );
-}
-
-function findAllFiles(rootDir: string): RouteFile[] {
-  return scanDirectory('', rootDir, '/');
+  return joinFilePaths(rootDir, '__fbr__.js');
 }
 
 async function writeFbrFile(rootDir: string): Promise<string> {
-  const fbrFilePath = getFbrFilePath(rootDir);
-  const fbrDir = dirname(fbrFilePath);
-
-  interface RouteEntry {
-    importPath: string;
-    apiPath: string;
-    handlers: { method: string; exportKey: string; isArray: boolean }[];
-  }
-
-  const entries: RouteEntry[] = [];
-
-  for (const { filePath, apiPath } of findAllFiles(rootDir)) {
-    let mod: any;
-    try {
-      mod = await importFile(filePath);
-    } catch (err) {
-      log.warn(`Could not import route file "${filePath}" during build: ${err instanceof Error ? err.message : String(err)}`);
-      continue;
+  const files = await findFiles.import<Partial<Record<typeof METHODS[keyof typeof METHODS], Fbr.RouteFileExport>>>(rootDir);
+  const entries = files.map(({ mod, href, paths }) => {
+    if (!mod) {
+      log.error(`Route ${href}\n - failed to import during build`);
+      throw new Error(`Failed to import route file "${href}" during build.`);
     }
-    const handlers: RouteEntry['handlers'] = [];
-    for (const [method, exportKey] of Object.entries(METHODS)) {
-      const raw = mod[exportKey];
-      if (!raw) continue;
-      if (Array.isArray(raw) || typeof raw === 'function')
-        handlers.push({ method, exportKey, isArray: Array.isArray(raw) });
-    }
-    if (handlers.length > 0)
-      entries.push({
-        importPath: './' + makeForwardSlashes(relative(fbrDir, filePath)),
-        apiPath,
-        handlers,
-      });
-  }
-
-  const lines: string[] = ["import { Router } from 'express';"];
-
-  for (let i = 0; i < entries.length; i++) {
-    const { importPath, handlers } = entries[i];
-    const named = handlers.map(({ exportKey }) => `${exportKey} as R${i}_${exportKey}`).join(', ');
-    lines.push(`import { ${named} } from '${importPath}';`);
-  }
-
-  if (entries.length === 0) {
-    lines.push('export default Router();');
-  } else {
-    lines.push('export default Router()');
-    const chains: string[] = [];
-    for (let i = 0; i < entries.length; i++) {
-      const { apiPath, handlers } = entries[i];
-      for (const { method, exportKey, isArray } of handlers) {
-        const ref = `R${i}_${exportKey}`;
-        chains.push(`  .${method}('${apiPath}', ${isArray ? `...${ref}` : ref})`);
+    const methods: { method: string; METHOD: string; isArray: boolean }[] = [];
+    for (const [method, METHOD] of Object.entries(METHODS)) {
+      const raw = mod[METHOD];
+      if (raw === undefined)
+        continue;
+      if (Array.isArray(raw)) {
+        const handlers = raw.filter((h: any) => typeof h === 'function');
+        if (!handlers.length) {
+          log.error(`Route "${href}"\n — export "${METHOD}" is an array but contains no functions, which is not allowed during build.`);
+          throw new Error(`Export "${METHOD}" in route file "${href}" is an array but contains no functions, which is not allowed during build.`);
+        }
+        if (handlers.length < raw.length) {
+          log.error(`Route "${href}"\n — export "${METHOD}" contains non-function entries, which is not allowed during build.`);
+          throw new Error(`Export "${METHOD}" in route file "${href}" contains non-function entries, which is not allowed during build.`);
+        }
+        methods.push({ method, METHOD, isArray: true });
+      } else if (typeof raw === 'function')
+        methods.push({ method, METHOD, isArray: false });
+      else {
+        log.error(`Route "${href}"\n — export "${METHOD}" is not a function or array of functions, which is not allowed during build.`);
+        throw new Error(`Export "${METHOD}" in route file "${href}" is not a function or array of functions, which is not allowed during build.`);
       }
     }
-    chains[chains.length - 1] += ';';
-    lines.push(...chains);
-  }
-
-  writeFileSync(fbrFilePath, lines.join('\n'), 'utf-8');
+    return {
+      filePath: createFilePathFromPathParts(paths),
+      apiPath: createApiPathFromPathParts(paths),
+      methods,
+    };
+  });
+  let imports = "import{Router}from'express';";
+  let exports = 'export default Router()';
+  entries.forEach(({ filePath, methods, apiPath }, index) => {
+    const named: string[] = [];
+    methods.forEach(({ METHOD, method, isArray }) => {
+      const ref = `R${index}_${METHOD}`;
+      named.push(`${METHOD} as ${ref}`);
+      exports += `.${method}('${apiPath}', ${isArray ? '...' : ''}${ref})`;
+    });
+    imports += `import{${named.join(',')}}from'${filePath}';`;
+  });
+  const fbrFilePath = getFbrFilePath(rootDir);
+  writeFileSync(fbrFilePath, `${imports}${exports};`, 'utf-8');
   return fbrFilePath;
 }
 
 async function createRouterFromDirectory(rootDir: string): Promise<Router> {
   const router = Router();
-  for (const { filePath, apiPath } of findAllFiles(rootDir)) {
-    let mod: any;
-    try {
-      mod = await importFile(filePath);
-    } catch (err) {
-      log.warn(`Could not import route file "${filePath}": ${err instanceof Error ? err.message : String(err)}`);
-      continue;
+  const files = await findFiles.import<Partial<Record<typeof METHODS[keyof typeof METHODS], Fbr.RouteFileExport>>>(rootDir);
+  files.forEach(({ mod, href, paths }) => {
+    if (!mod) {
+      log.warn(`Route ${href}\n - failed to import`);
+      return;
     }
-    for (const [method, methodKey] of Object.entries(METHODS)) {
-      const raw = mod[methodKey];
+    const apiPath = createApiPathFromPathParts(paths);
+    for (const [method, METHOD] of Object.entries(METHODS) as [keyof typeof METHODS, typeof METHODS[keyof typeof METHODS]][]) {
+      const raw = mod[METHOD];
       if (raw === undefined)
         continue;
       if (Array.isArray(raw)) {
         const handlers = raw.filter((h: any) => typeof h === 'function');
         if (handlers.length < raw.length)
-          log.warn(`Route "${filePath}" — export "${methodKey}" contains non-function entries, they will be ignored.`);
+          log.warn(`Route "${href}"\n — export "${METHOD}" contains non-function entries, they will be ignored.`);
         if (handlers.length)
-          // @ts-expect-error
           router[method](apiPath, ...handlers);
       } else if (typeof raw === 'function')
-        // @ts-expect-error
         router[method](apiPath, raw);
       else
-        log.warn(`Route "${filePath}" — export "${methodKey}" is not a function or array of functions, skipping.`);
+        log.warn(`Route "${href}" — export "${METHOD}" is not a function or array of functions, skipping.`);
     }
-  }
+  });
   return router;
 }
 
 async function getRouter(): Promise<Router> {
-  if (Fbr.isDev) {
-    const rootDir = resolvePath(Fbr.config.paths.srcDir, Fbr.config.router.routesDir);
-    return createRouterFromDirectory(rootDir);
-  } else {
-    const rootDir = resolvePath(Fbr.config.paths.buildDir, Fbr.config.router.routesDir);
-    const fbrModule = await importFile(getFbrFilePath(rootDir));
-    return fbrModule.default;
-  }
+  if (Fbr.isDev)
+    return createRouterFromDirectory(resolvePath(Fbr.config.paths.srcDir, Fbr.config.router.routesDir));
+  else
+    return (await importFile(getFbrFilePath(resolvePath(Fbr.config.paths.buildDir, Fbr.config.router.routesDir)))).default;
 }
 
 
 export default getRouter;
-export { getRouter, writeFbrFile };
+export { createRouterFromDirectory, getFbrFilePath, getRouter, writeFbrFile };
 

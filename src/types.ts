@@ -3,6 +3,8 @@ import type { ParamsDictionary } from 'express-serve-static-core';
 import type { Server as HttpServer } from 'http';
 import type { ParsedQs } from 'qs';
 
+type VoidLike = void | Promise<void>;
+
 // zod schema type
 interface ZodObjectSchema<O extends Record<string, any> = Record<string, any>> {
   _zod: { output: O };
@@ -23,10 +25,10 @@ interface Log {
   error(message: string, error?: any): void;
 }
 
-// plugin — no params; access server/config via globals
-type Plugin = () => void | Promise<void>;
+// plugin — access server/config via globals
+type Plugin = () => VoidLike;
 
-// special sentinel: use process.env[PARENT_CHILD] instead of a hardcoded value
+// special sentinel: use process.env[PARENT_CHILD] instead of a hardcoded value in config
 type UseEnv = 'USE_ENV';
 
 // user-facing config input type (deep partial of Fbr.Config)
@@ -124,11 +126,11 @@ declare global {
     type ResolveDetails<D> =
       [D] extends [never] ? (details?: { status?: number; message?: string }) => void :
       [D] extends [undefined] ? (details?: { status?: number; message?: string; data?: Fbr.ResData }) => void :
-      [D] extends [null] ? (details?: { status?: number; message?: string }) => void :
+      [D] extends [null] ? (details?: { status?: number; message?: string, data?: null }) => void :
       (details?: { status?: number; message?: string; data: D }) => void;
     type ResolveShorthandFn<D> =
       [D] extends [never] ? () => void :
-      [D] extends [null] ? () => void :
+      [D] extends [null] ? (data?: null) => void :
       [D] extends [undefined] ? (data?: Fbr.ResData) => void :
       (data: D) => void;
     type ResolveFn<D> = ResolveDetails<D> & {
@@ -150,12 +152,11 @@ declare global {
     type Req<D extends Fbr.ResData = any, B extends Fbr.ReqData = any> = Request<ParamsDictionary, Fbr.ResBody<D>, Fbr.ReqBody<B>, ParsedQs, Record<string, any>>;
     type Res<D extends Fbr.ResData | undefined = undefined> = Omit<Response<Fbr.ResBody<D extends undefined ? any : D>, Record<string, any>>, 'resolve'> & { resolve: Fbr.ResolveFn<D>; reject: Fbr.RejectFn; };
     type Next = NextFunction;
-    type VoidLike = void | Promise<void>;
-    type RouteHandler<D extends Fbr.ResData | undefined = undefined, B extends Fbr.ReqData = any> = (req: Fbr.Req<D extends undefined ? any : D, B>, res: Fbr.Res<D>) => Fbr.VoidLike;
-    type Middleware<D extends Fbr.ResData | undefined = undefined, B extends Fbr.ReqData = any> = (req: Fbr.Req<D extends undefined ? any : D, B>, res: Fbr.Res<D>, next: Fbr.Next) => Fbr.VoidLike;
-    type ErrorHandler<D extends Fbr.ResData | undefined = undefined, B extends Fbr.ReqData = any> = (err: Error, req: Fbr.Req<D extends undefined ? any : D, B>, res: Fbr.Res<D>, next: Fbr.Next) => Fbr.VoidLike;
+    type RouteHandler<D extends Fbr.ResData | undefined = undefined, B extends Fbr.ReqData = any> = (req: Fbr.Req<D extends undefined ? any : D, B>, res: Fbr.Res<D>) => VoidLike;
+    type Middleware<D extends Fbr.ResData | undefined = undefined, B extends Fbr.ReqData = any> = (req: Fbr.Req<D extends undefined ? any : D, B>, res: Fbr.Res<D>, next: Fbr.Next) => VoidLike;
+    type ErrorHandler<D extends Fbr.ResData | undefined = undefined, B extends Fbr.ReqData = any> = (err: Error, req: Fbr.Req<D extends undefined ? any : D, B>, res: Fbr.Res<D>, next: Fbr.Next) => VoidLike;
     type Route<D extends Fbr.ResData | undefined = undefined, B extends Fbr.ReqData = any> = Fbr.RouteHandler<D, B> | Fbr.Middleware<D, B> | Fbr.ErrorHandler<D, B>;
-    type RouteFileExport = Fbr.Route | Fbr.Route[];
+    type RouteFileExport = Fbr.Route<any, any> | Fbr.Route<any, any>[];
   }
   /** Global logger. Available in all route files and plugins. */
   const log: Log;
@@ -183,5 +184,4 @@ type RouteFileExport = Fbr.RouteFileExport;
 
 
 export type { ErrorHandler, Log, LogLevel, Middleware, Next, Plugin, Req, ReqBody, ReqData, Res, ResBody, ResData, Route, RouteFileExport, RouteHandler, UseEnv, UserConfig, ZodInfer, ZodObjectSchema };
-
 

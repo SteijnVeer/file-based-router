@@ -23,7 +23,7 @@ function joinFilePaths(base: string, addition: string): string {
 function joinApiPaths(base: string, addition: string): string {
   return `${base.endsWith('/') ? base.slice(0, -1) : base}${!!base && (!addition || addition.startsWith('{/')) ? '' : '/'}${addition}`;
 }
-function parseApiPathPartFromPathSegment(segment: string, removeExtension: boolean): string {
+function parseApiPathPartFromPathSegment(segment: string, removeExtension: boolean = false): string {
   let name = removeOrderingPrefix(segment);
   if (removeExtension)
     name = removeFileExtension(name);
@@ -33,10 +33,25 @@ function parseApiPathPartFromPathSegment(segment: string, removeExtension: boole
     .replace(/\[(\w+)\]/g, ':$1');
   return name === 'index' ? '' : name;
 }
-function importFile(...paths: string[]): Promise<any> {
-  return import(pathToFileURL(resolve(...paths)).href);
+function createApiPathFromPathParts(paths: string[]): string {
+  return paths.reduce((acc, path) => joinApiPaths(acc, parseApiPathPartFromPathSegment(path)), '/');
+}
+function createFilePathFromPathParts(paths: string[]): string {
+  return `./${makeForwardSlashes(join(...paths))}`;
+}
+function getFileHref(...paths: string[]): string {
+  return pathToFileURL(resolve(...paths)).href;
+}
+function importFile(path: string): Promise<any>;
+function importFile(fileHref: string): Promise<any>;
+function importFile(...paths: string[]): Promise<any>;
+function importFile(path: string, ...paths: string[]): Promise<any> {
+  const href = !paths.length && path.startsWith('file://')
+    ? path
+    : getFileHref(path, ...paths);
+  return import(href);
 }
 
 
-export { getFileExtension, importFile, joinApiPaths, joinFilePaths, makeForwardSlashes, makeImportPath, parseApiPathPartFromPathSegment, removeFileExtension, removeOrderingPrefix };
+export { createApiPathFromPathParts, createFilePathFromPathParts, getFileExtension, getFileHref, importFile, joinApiPaths, joinFilePaths, makeForwardSlashes, makeImportPath, parseApiPathPartFromPathSegment, removeFileExtension, removeOrderingPrefix };
 
